@@ -47,6 +47,9 @@ function initTradePage() {
   }
 
   function recall() {
+    //a symbol in the address bar wins, so a link to one asset opens on it
+    var asked = new URLSearchParams(window.location.search).get('symbol');
+    if (asked) return { symbol: asked.toUpperCase(), name: '' };
     try {
       return JSON.parse(sessionStorage.getItem(MEMORY_KEY) || 'null');
     } catch (e) { return null; }
@@ -175,6 +178,13 @@ function initTradePage() {
   function loadSymbol(result) {
     current = result;
     remember(result);
+    //put the symbol in the address bar so the page can be linked to or
+    //refreshed without losing it. replaceState rather than pushState, so the
+    //back button still leaves the page instead of stepping through symbols.
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname + '?symbol=' +
+                                  encodeURIComponent(result.symbol));
+    }
     $('symbol-input').value = result.symbol;
     $('c-symbol').textContent = result.symbol;
     $('c-name').textContent = result.name || '';

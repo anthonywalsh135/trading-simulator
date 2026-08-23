@@ -7,14 +7,17 @@ and fast-forward through history to see how a strategy would have played out.
 
 Built with Flask, SQLite and vanilla JavaScript. No API key is needed to run it.
 
-![tests](https://github.com/USERNAME/trading-simulator/actions/workflows/ci.yml/badge.svg)
+[![tests](https://github.com/anthonywalsh135/trading-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/anthonywalsh135/trading-simulator/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![licence](https://img.shields.io/badge/licence-MIT-green)
+![tests-count](https://img.shields.io/badge/tests-108%20passing-brightgreen)
 
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
+
+![The trading page](docs/trade.png)
 
 ---
 
@@ -37,6 +40,8 @@ are debounced, cancel their own in-flight request, and are keyboard-navigable.
 
 **Trade at live prices.** The chart updates about once a second while the market
 is open, with candlesticks, selectable intervals and a summary of the session.
+The chosen asset lives in the URL, so `/stocks?symbol=NVDA` is a link you can
+share and a refresh you can survive.
 
 **Simulation dates.** Every account has a simulation date, and it governs
 everything on screen rather than only the price a trade fills at. Set it to today
@@ -64,6 +69,32 @@ and the cost basis all return to exactly what they were.
 
 **Social features.** Friend requests, a leaderboard ranked by net worth, and a
 feed of recent trades across the site.
+
+### Screenshots
+
+Net worth over time, built with pandas from the trade ledger and daily closing
+prices, alongside the portfolio it is derived from:
+
+![The account page](docs/account.png)
+
+The trading bot, after being fast-forwarded across two years of market history.
+Every line in the log is a decision it actually made and the threshold that
+triggered it:
+
+![The trading bot](docs/bot.png)
+
+<details>
+<summary>More screenshots</summary>
+
+**Home**
+
+![The home page](docs/home.png)
+
+**Leaderboard**
+
+![The leaderboard](docs/leaderboard.png)
+
+</details>
 
 ---
 
