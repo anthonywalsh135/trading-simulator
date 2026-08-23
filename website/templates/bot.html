@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Trading bot{% endblock %}
+
+{% block content %}
+<h1>Trading bot</h1>
+<p class="muted">Set price thresholds and the bot trades for you, even while you are away.</p>
+
+<div class="trade-layout mt-4">
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <h3>Configuration</h3>
+        <span class="badge {{ 'badge-open' if status.running else 'badge-closed' }}">
+          {{ 'Running' if status.running else ('Enabled (starting)' if status.enabled else 'Stopped') }}
+        </span>
+      </div>
+
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="field">
+          <label for="symbol">Asset to watch</label>
+          <input type="text" id="symbol" name="symbol" value="{{ config.symbol or '' }}"
+                 placeholder="Search by company name or ticker">
+        </div>
+
+        <div class="grid grid-2">
+          <div class="field">
+            <label for="threshold_buy">Buy when the price falls to</label>
+            <input type="number" id="threshold_buy" name="threshold_buy" step="0.01" min="0"
+                   value="{{ config.threshold_buy or '' }}" placeholder="0.00">
+          </div>
+          <div class="field">
+            <label for="threshold_sell">Sell when the price rises to</label>
+            <input type="number" id="threshold_sell" name="threshold_sell" step="0.01" min="0"
+                   value="{{ config.threshold_sell or '' }}" placeholder="0.00">
+          </div>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="quantity">Quantity per trade</label>
+            <input type="number" id="quantity" name="quantity" step="0.00000001" min="0"
+                   value="{{ config.quantity or '' }}" placeholder="0">
+          </div>
+          <div class="field">
+            <label for="cooldown">Cooldown (seconds)</label>
+            <input type="number" id="cooldown" name="cooldown" min="5"
+                   value="{{ config.cooldown_seconds or 60 }}">
+          </div>
+          <div class="field">
+            <label for="max_trades">Max trades per day</label>
+            <input type="number" id="max_trades" name="max_trades" min="1"
+                   value="{{ config.max_trades_per_day or 20 }}">
+          </div>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400; margin: var(--space-3) 0">
+          <input type="checkbox" name="enable_bot" style="width:auto" {% if config.enabled %}checked{% endif %}>
+          <span>Enable the bot</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary">Save configuration</button>
+      </form>
+
+      <p class="small muted mt-4">
+        The cooldown and daily limit stop the bot from repeatedly re-buying while the
+        price sits below your buy threshold, which would otherwise drain your balance
+        in seconds.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Activity log</h3>
+        <span class="small muted">{{ status.trades_today }} trade(s) today</span>
+      </div>
+      <div class="event-log" id="event-log">
+        {% if events %}
+          {% for e in events %}
+            <div class="event event-{{ e.level }}">
+              <span class="when">{{ e.created_at[5:16] }}</span>
+              <span class="what">{{ e.message }}</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="muted small">Nothing yet. Enable the bot and its activity appears here.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>How it works</h3></div>
+      <p class="small muted">
+        The bot checks the live price every few seconds. If the price is at or below your
+        buy threshold it buys; at or above your sell threshold it sells.
+      </p>
+      <p class="small muted">
+        The buy threshold must be below the sell threshold, otherwise both rules would
+        fire at once.
+      </p>
+      <p class="small muted">
+        When you fast-forward time, the bot is evaluated against every bar it skips
+        through, so it makes the trades it would have made during that period.
+      </p>
+      {% if status.last_error %}
+        <div class="flash flash-error" style="position:static; box-shadow:none">
+          <span>Last error: {{ status.last_error }}</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Your position</h3></div>
+      <table class="data">
+        <tbody>
+          <tr><td class="muted">Cash</td><td class="num">${{ '{:,.2f}'.format(valuation.balance) }}</td></tr>
+          <tr><td class="muted">Investments</td><td class="num">${{ '{:,.2f}'.format(valuation.total_value) }}</td></tr>
+          <tr><td class="muted">Net worth</td><td class="num"><strong>${{ '{:,.2f}'.format(valuation.net_worth) }}</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script>
+  new SymbolSearch(document.getElementById('symbol'), { kind: 'all' });
+
+  // Poll for new bot events so the log updates without a page reload.
+  var lastEventId = {{ events[0].id if events else 0 }};
+  setInterval(function () {
+    fetch('/api/bot/events?after=' + lastEventId)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok || !data.events.length) return;
+        var log = document.getElementById('event-log');
+        data.events.reverse().forEach(function (e) {
+          if (e.id > lastEventId) lastEventId = e.id;
+          var div = document.createElement('div');
+          div.className = 'event event-' + e.level;
+          div.innerHTML = '<span class="when"></span><span class="what"></span>';
+          div.querySelector('.when').textContent = e.created_at.slice(5, 16);
+          div.querySelector('.what').textContent = e.message;
+          log.insertBefore(div, log.firstChild);
+        });
+      });
+  }, 5000);
+</script>
+{% endblock %}

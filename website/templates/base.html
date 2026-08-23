@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A trading simulator for learning how markets work, with live prices and no real money at risk.">
+  <title>{% block title %}Home{% endblock %} · Trading Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📈</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script>
+    // Apply the saved theme before first paint so the page never flashes light
+    // then switch to dark.
+    (function () {
+      var saved = localStorage.getItem('theme');
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+</head>
+<body>
+  {% if current_user.is_authenticated %}
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('views.home') }}">📈 Trading Sim</a>
+
+    {# one navigation bar for everyone. the admin link is the only part that
+       depends on who is logged in, so the list is written out once. #}
+    <nav class="nav">
+      {% set nav_items = [
+        ('views.home',        'Home'),
+        ('views.stocks',      'Stocks'),
+        ('views.crypto',      'Crypto'),
+        ('views.trading_bot', 'Bot'),
+        ('views.information', 'Leaderboard'),
+        ('views.friends',     'Friends'),
+        ('views.account',     'Account'),
+      ] %}
+      {% for endpoint, label in nav_items %}
+        <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}class="active"{% endif %}>{{ label }}</a>
+      {% endfor %}
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('views.admin') }}" {% if request.endpoint == 'views.admin' %}class="active"{% endif %}>Admin</a>
+      {% endif %}
+    </nav>
+
+    <div class="header-stats">
+      <div class="header-stat">
+        <span class="label">Sim date</span>
+        <span class="value" id="hdr-date">
+          {{ sim_date }}{% if not is_today %} <span class="badge badge-sim">past</span>{% endif %}
+        </span>
+      </div>
+      <div class="header-stat">
+        <span class="label">Cash</span>
+        {# taken from the valuation, which reads the balance from the
+           database. current_user is loaded once per request and goes stale
+           the moment the bot trades. #}
+        <span class="value" id="hdr-balance">${{ '{:,.2f}'.format(header_balance if header_balance is defined else current_user.balance) }}</span>
+      </div>
+      <div class="header-stat">
+        <span class="label">Net worth{% if not is_today %} on {{ sim_date }}{% endif %}</span>
+        <span class="value" id="hdr-networth">${{ '{:,.2f}'.format(net_worth or current_user.balance) }}</span>
+      </div>
+    </div>
+
+    <button class="icon-btn" id="theme-toggle" title="Switch light/dark theme" aria-label="Switch theme">◑</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.logout') }}">Log out</a>
+  </header>
+  {% endif %}
+
+  <div class="flashes" id="flashes">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        {# the category is lowercased here, so an error cannot come out as a
+           green success banner because of how it was spelled. #}
+        <div class="flash flash-{{ category|lower if category in ['success','error','warning','info'] else 'info' }}">
+          <span>{{ message }}</span>
+          <button type="button" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site">&copy; 2026 Anthony Walsh · Simulated trading only. No real money is involved.</footer>
+
+  <script>
+    window.CSRF_TOKEN = "{{ csrf_token() }}";
+
+    document.getElementById('theme-toggle')?.addEventListener('click', function () {
+      var root = document.documentElement;
+      var current = root.getAttribute('data-theme');
+      if (!current) {
+        current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      var next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+
+    // Auto-dismiss flash messages so they do not stack up on the screen.
+    setTimeout(function () {
+      document.querySelectorAll('.flash').forEach(function (el) { el.remove(); });
+    }, 6000);
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

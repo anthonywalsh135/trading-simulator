@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+
+{% block content %}
+<h1>Account</h1>
+
+<div class="grid grid-2 mt-4">
+  <div class="card">
+    <div class="card-head"><h3>Your details</h3></div>
+    <table class="data">
+      <tbody>
+        <tr><td class="muted">Name</td><td><strong>{{ current_user.first_name }}</strong></td></tr>
+        <tr><td class="muted">Email</td><td>{{ current_user.email }}</td></tr>
+        <tr><td class="muted">Cash</td><td class="num">${{ '{:,.2f}'.format(valuation.balance) }}</td></tr>
+        <tr><td class="muted">Investments</td><td class="num">${{ '{:,.2f}'.format(valuation.total_value) }}</td></tr>
+        <tr><td class="muted">Net worth</td><td class="num"><strong>${{ '{:,.2f}'.format(valuation.net_worth) }}</strong></td></tr>
+      </tbody>
+    </table>
+
+    <form method="POST" class="mt-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="form_action" value="rename">
+      <div class="field">
+        <label for="first_name">Change your name</label>
+        <input type="text" id="first_name" name="first_name" value="{{ current_user.first_name }}" required>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Save name</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Simulation date</h3>
+      <span class="badge {{ 'badge-open' if is_today else 'badge-sim' }}">{{ sim_date }}</span>
+    </div>
+    <p class="muted small">
+      Trades execute at the market price on this date. Set it to today to trade live,
+      or pick a past date and use the time machine on a trading page to fast-forward
+      through the market to the present.
+    </p>
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="form_action" value="sim_date">
+      <div class="field">
+        <label for="sim_date">Choose a date</label>
+        <input type="date" id="sim_date" name="sim_date" value="{{ sim_date }}"
+               min="2000-01-01" max="{{ today }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Set date</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-head">
+    <h3>Portfolio</h3>
+    <span class="small muted">
+      Valued on {{ sim_date }}{% if is_today %} (live){% endif %}; profit and loss
+      is measured against your average purchase price.
+    </span>
+  </div>
+  {% if valuation.positions %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Asset</th><th class="num">Quantity</th><th class="num">Avg cost</th>
+            <th class="num">Price</th><th class="num">Value</th><th class="num">Profit / loss</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in valuation.positions %}
+          <tr>
+            <td><strong>{{ p.symbol }}</strong>{% if p.stale %} <span class="badge badge-stale">delayed</span>{% endif %}</td>
+            <td class="num">{{ '{:g}'.format(p.shares) }}</td>
+            <td class="num">${{ '{:,.2f}'.format(p.avg_cost) }}</td>
+            <td class="num">{{ '${:,.2f}'.format(p.current_price) if p.current_price else '—' }}</td>
+            <td class="num">{{ '${:,.2f}'.format(p.value) if p.value is not none else '—' }}</td>
+            <td class="num {{ 'up' if (p.pnl or 0) >= 0 else 'down' }}">
+              {% if p.pnl is not none %}
+                {{ '{:+,.2f}'.format(p.pnl) }} <span class="small">({{ '{:+.1f}'.format(p.pnl_percent) }}%)</span>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><p>No holdings yet.</p></div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="card-head">
+    <h3>Net worth over time</h3>
+    <span class="small muted">Cash plus holdings, valued at each day's closing price.</span>
+  </div>
+  <div id="history-chart" style="height: 260px"></div>
+  <p class="muted small hidden" id="history-empty">Make a trade and your history appears here.</p>
+</div>
+
+<div class="card mt-4">
+  <div class="card-head">
+    <h3>Friends</h3>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('views.friends') }}">Find friends</a>
+  </div>
+  {% if friends %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Name</th><th class="num">Cash</th><th class="num">Investments</th>
+              <th class="num">Net worth</th><th>Sim date</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for f in friends %}
+          <tr>
+            <td><strong>{{ f.user.first_name }}</strong><div class="small muted">{{ f.user.email }}</div></td>
+            <td class="num">${{ '{:,.2f}'.format(f.balance) }}</td>
+            <td class="num">${{ '{:,.2f}'.format(f.investments) }}</td>
+            <td class="num"><strong>${{ '{:,.2f}'.format(f.net_worth) }}</strong></td>
+            <td class="small muted">{{ f.sim_date }}</td>
+            <td class="right">
+              <form method="POST" action="{{ url_for('views.remove_friend', friend_id=f.user.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><p>No friends yet. Add some to compare portfolios.</p></div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="card-head"><h3>Trade history</h3></div>
+  {% if transactions %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset</th><th>Action</th><th class="num">Qty</th><th class="num">Price</th>
+                   <th class="num">Total</th><th>Sim date</th><th>Executed</th></tr></thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td><strong>{{ t.symbol }}</strong></td>
+            <td class="{{ 'up' if t.shares > 0 else 'down' }}">
+              {{ 'Buy' if t.shares > 0 else 'Sell' }}
+              {% if t.source != 'manual' %}<span class="small muted">({{ t.source }})</span>{% endif %}
+            </td>
+            <td class="num">{{ '{:g}'.format(t.shares | abs) }}</td>
+            <td class="num">${{ '{:,.2f}'.format(t.price) }}</td>
+            <td class="num">${{ '{:,.2f}'.format(t.total | abs) }}</td>
+            <td class="small muted">{{ t.sim_date }}</td>
+            <td class="small muted nowrap">{{ t.executed_at[:16] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><p>No trades recorded.</p></div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="card-head"><h3>Data and privacy</h3></div>
+  <p class="muted small">
+    We store only your name, email address and trading activity. See the
+    <a href="{{ url_for('views.gdpr') }}">privacy notice</a> for details of your rights.
+  </p>
+  <a href="{{ url_for('views.account_delete') }}" class="btn btn-danger btn-sm">Delete my account</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}

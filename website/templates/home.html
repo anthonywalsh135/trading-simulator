@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h1>Welcome back, {{ current_user.first_name }}</h1>
+<p class="muted">
+  {% if is_today %}
+    You are trading at live market prices.
+  {% else %}
+    Your simulation is set to <strong>{{ sim_date }}</strong>. Use the time machine on a
+    trading page to catch up to today.
+  {% endif %}
+</p>
+
+<div class="grid grid-4 mt-5">
+  <div class="stat-tile">
+    <div class="label">Cash</div>
+    <div class="value">${{ '{:,.2f}'.format(valuation.balance) }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="label">Investments{% if not is_today %} on {{ sim_date }}{% endif %}</div>
+    <div class="value">${{ '{:,.2f}'.format(valuation.total_value) }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="label">Net worth</div>
+    <div class="value">${{ '{:,.2f}'.format(valuation.net_worth) }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="label">Total profit / loss</div>
+    <div class="value {{ 'up' if valuation.total_pnl >= 0 else 'down' }}">
+      {{ '{:+,.2f}'.format(valuation.total_pnl) }}
+      <span class="small muted">({{ '{:+.2f}'.format(valuation.total_pnl_percent) }}%)</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2 mt-4">
+  <a href="{{ url_for('views.stocks') }}" class="card" style="text-decoration:none; color:inherit">
+    <h2>📊 Stocks</h2>
+    <p class="muted small">Search thousands of companies by name and trade at live prices.</p>
+  </a>
+  <a href="{{ url_for('views.crypto') }}" class="card" style="text-decoration:none; color:inherit">
+    <h2>₿ Crypto</h2>
+    <p class="muted small">Round-the-clock markets with fractional quantities.</p>
+  </a>
+</div>
+
+<div class="grid grid-2 mt-4">
+  <div class="card">
+    <div class="card-head"><h3>Your holdings</h3></div>
+    {% if positions %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Asset</th><th class="num">Qty</th><th class="num">Price</th>
+                <th class="num">Value</th><th class="num">P/L</th></tr>
+          </thead>
+          <tbody>
+            {% for p in positions %}
+            <tr>
+              <td><strong>{{ p.symbol }}</strong></td>
+              <td class="num">{{ '{:g}'.format(p.shares) }}</td>
+              <td class="num">{{ '${:,.2f}'.format(p.current_price) if p.current_price else '—' }}</td>
+              <td class="num">{{ '${:,.2f}'.format(p.value) if p.value is not none else '—' }}</td>
+              <td class="num {{ 'up' if (p.pnl or 0) >= 0 else 'down' }}">
+                {% if p.pnl is not none %}
+                  {{ '{:+,.2f}'.format(p.pnl) }} <span class="small">({{ '{:+.1f}'.format(p.pnl_percent) }}%)</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <div class="big">📈</div>
+        <p>Nothing yet. Pick a market above to make your first trade.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Recent activity</h3></div>
+    {% if recent %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Asset</th><th>Action</th><th class="num">Qty</th><th class="num">Price</th><th>When</th></tr></thead>
+          <tbody>
+            {% for t in recent %}
+            <tr>
+              <td><strong>{{ t.symbol }}</strong></td>
+              <td class="{{ 'up' if t.shares > 0 else 'down' }}">
+                {{ 'Buy' if t.shares > 0 else 'Sell' }}
+                {% if t.source != 'manual' %}<span class="tag small muted">{{ t.source }}</span>{% endif %}
+              </td>
+              <td class="num">{{ '{:g}'.format(t.shares | abs) }}</td>
+              <td class="num">${{ '{:,.2f}'.format(t.price) }}</td>
+              <td class="small muted nowrap">{{ t.executed_at[:16] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><p>No trades yet.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

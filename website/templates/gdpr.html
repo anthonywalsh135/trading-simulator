@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Privacy{% endblock %}
+
+{% block content %}
+<h1>Privacy and your data</h1>
+<p class="muted">How this simulator handles your personal information, under the UK GDPR.</p>
+
+<div class="card mt-4">
+  <h3>What we store</h3>
+  <table class="data">
+    <thead><tr><th>Data</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>First name</strong></td><td>Shown on your account, the leaderboard and to friends.</td></tr>
+      <tr><td><strong>Email address</strong></td><td>Used to log in and to send one-time verification codes.</td></tr>
+      <tr><td><strong>Password</strong></td><td>Stored only as a scrypt hash, never as text, and not recoverable.</td></tr>
+      <tr><td><strong>Trading activity</strong></td><td>Your simulated balance, holdings and trade history.</td></tr>
+      <tr><td><strong>Friend connections</strong></td><td>Who you have connected with, so portfolios can be compared.</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted mt-4">
+    All trading is simulated. No real money, bank details or payment information is
+    ever collected, and nothing is shared with third parties.
+  </p>
+</div>
+
+<div class="card mt-4">
+  <h3>Your rights</h3>
+  <ul class="muted">
+    <li><strong>Access.</strong> Your account page shows every piece of data held about you.</li>
+    <li><strong>Rectification.</strong> You can change your name at any time from your account page.</li>
+    <li><strong>Erasure.</strong> Deleting your account permanently removes your details, holdings, trade history and friend connections.</li>
+  </ul>
+  <a href="{{ url_for('views.account') }}" class="btn btn-secondary btn-sm">Go to my account</a>
+</div>
+
+<div class="card mt-4">
+  <h3>Third-party data</h3>
+  <p class="muted small">
+    Market prices come from public Yahoo Finance and Binance endpoints. Only the asset
+    symbol you are viewing is sent to them, never your identity or any account data.
+  </p>
+</div>
+{% endblock %}

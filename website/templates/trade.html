@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Crypto' if kind == 'crypto' else 'Stocks' }}{% endblock %}
+
+{% block content %}
+<div class="trade-layout">
+
+  <!-- ================= Chart ================= -->
+  <div>
+    <div class="card">
+      <div class="field">
+        <label for="symbol-input">Search for {{ 'a cryptocurrency' if kind == 'crypto' else 'a company or ticker' }}</label>
+        <input type="text" id="symbol-input"
+               placeholder="{{ 'Try “bitcoin” or BTC-USD' if kind == 'crypto' else 'Try “apple”, “tesla” or AAPL' }}">
+      </div>
+
+      <div id="chart-panel" class="hidden">
+        <div class="chart-head">
+          <div>
+            <div class="symbol-title">
+              <span class="ticker" id="c-symbol">—</span>
+              <span class="badge badge-closed" id="c-state">—</span>
+              <span class="badge badge-stale hidden" id="c-stale">Delayed</span>
+            </div>
+            <div class="muted small" id="c-name">&nbsp;</div>
+            <div class="price-now mt-4">
+              <span class="price" id="c-price">—</span>
+              <span class="delta" id="c-delta"></span>
+            </div>
+            {# what this account actually trades at. only shown when the
+               simulation date is behind, because only then is it a different
+               number from the price above. #}
+            <div class="exec-price hidden" id="c-exec">
+              <span class="label">Your price on <span id="c-exec-date"></span></span>
+              <span class="value" id="c-exec-price">—</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="segmented" id="interval-picker">
+              <button data-interval="1m"  data-range="1d">1m</button>
+              <button data-interval="5m"  data-range="1d" class="active">5m</button>
+              <button data-interval="15m" data-range="5d">15m</button>
+              <button data-interval="60m" data-range="1mo">1h</button>
+              <button data-interval="1d"  data-range="1y">1D</button>
+            </div>
+            <div class="small muted right mt-4" id="interval-note"></div>
+          </div>
+        </div>
+
+        <div id="chart"></div>
+
+        <div class="chart-stats" id="c-stats"></div>
+
+        <div class="btn-row mt-4">
+          <button class="btn btn-secondary btn-sm" id="btn-predict">Show trend projection</button>
+          <span class="small muted" id="predict-note"></span>
+        </div>
+      </div>
+
+      <div class="empty" id="chart-empty">
+        <div class="big">🔍</div>
+        <p>Search above to load a live chart.</p>
+      </div>
+    </div>
+
+    <!-- ================= Fast-forward ================= -->
+    <div class="card">
+      <div class="card-head">
+        <h3>Time machine</h3>
+        <span class="badge {{ 'badge-open' if is_today else 'badge-sim' }}">{{ sim_date }}</span>
+      </div>
+
+      {% if is_today %}
+        <p class="muted small">
+          Your simulation has caught up to today, so you are trading at live market prices.
+          Set an earlier date on your <a href="{{ url_for('views.account') }}">account page</a> to trade in the past.
+        </p>
+      {% else %}
+        <p class="muted small">
+          You are trading on <strong>{{ sim_date }}</strong> at that day's prices.
+          Fast-forward to replay the market up to today, and your bot will trade along the way.
+        </p>
+        <div class="btn-row">
+          <div class="segmented" id="speed-picker">
+            <button data-speed="10">10&times;</button>
+            <button data-speed="60" class="active">60&times;</button>
+            <button data-speed="300">300&times;</button>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-ff" disabled>Fast-forward to today</button>
+          <button class="btn btn-secondary btn-sm hidden" id="btn-ff-cancel">Stop</button>
+        </div>
+        <div class="ff-panel mt-4 hidden" id="ff-panel">
+          <div class="ff-date" id="ff-date">{{ sim_date }}</div>
+          <div class="ff-bar"><div class="ff-fill" id="ff-fill"></div></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ================= Trade panel ================= -->
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>Trade</h3></div>
+
+      <div id="trade-disabled" class="muted small">Choose an asset to start trading.</div>
+
+      <div id="trade-form" class="hidden">
+        <div class="field">
+          <label for="qty">Quantity{% if not asset.allows_fractional %} (whole shares){% endif %}</label>
+          <input type="number" id="qty" min="0"
+                 step="{{ '0.00000001' if asset.allows_fractional else '1' }}"
+                 placeholder="0">
+        </div>
+
+        <div class="btn-row" style="margin-bottom: var(--space-3)">
+          {% for pct in [25, 50, 75, 100] %}
+            <button class="btn btn-secondary btn-sm pct-btn" data-pct="{{ pct }}">{{ pct }}%</button>
+          {% endfor %}
+        </div>
+
+        <div class="card" style="background: var(--surface-2); box-shadow: none; padding: var(--space-3)">
+          <div style="display:flex; justify-content:space-between">
+            <span class="small muted" id="est-label">Estimated cost</span>
+            <span class="num" id="est-cost">$0.00</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:4px">
+            <span class="small muted">Cash after</span>
+            <span class="num" id="est-after">—</span>
+          </div>
+        </div>
+
+        {# shown when the asset had not listed yet on the simulation date, so
+           there is no price to trade at. #}
+        <p class="small hidden mt-4" id="no-price" style="color: var(--warn)"></p>
+
+        <div class="btn-row mt-4">
+          <button class="btn btn-buy btn-block" id="btn-buy">Buy</button>
+          <button class="btn btn-sell btn-block" id="btn-sell">Sell</button>
+        </div>
+
+        <button class="btn btn-ghost btn-sm btn-block mt-4" id="btn-undo"
+                {% if not undo_depth %}disabled{% endif %}>
+          Undo last trade{% if undo_depth %} ({{ undo_depth }}){% endif %}
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= Holdings ================= -->
+    <div class="card">
+      <div class="card-head">
+        <h3>Your holdings</h3>
+        <span class="num small muted" id="pf-total">${{ '{:,.2f}'.format(valuation.total_value) }}</span>
+      </div>
+      {% if not is_today %}
+        <p class="small muted" style="margin-bottom: var(--space-3)">
+          Valued at closing prices on <strong>{{ sim_date }}</strong>, the date you are trading on.
+        </p>
+      {% endif %}
+      <div id="positions">
+        {% if valuation.positions %}
+          <table class="data">
+            <thead><tr><th>Asset</th><th class="num">Qty</th><th class="num">Value</th><th class="num">P/L</th></tr></thead>
+            <tbody>
+            {% for p in valuation.positions %}
+              <tr>
+                <td><strong>{{ p.symbol }}</strong></td>
+                <td class="num">{{ '{:g}'.format(p.shares) }}</td>
+                <td class="num">{{ '${:,.2f}'.format(p.value) if p.value is not none else '—' }}</td>
+                <td class="num {{ 'up' if (p.pnl or 0) >= 0 else 'down' }}">
+                  {% if p.pnl is not none %}{{ '{:+,.2f}'.format(p.pnl) }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="muted small">You do not own anything yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/trade.js') }}"></script>
+<script>
+  window.TRADE_CONFIG = {
+    kind: "{{ kind }}",
+    allowsFractional: {{ 'true' if asset.allows_fractional else 'false' }},
+    simDate: "{{ sim_date }}",
+    isToday: {{ 'true' if is_today else 'false' }},
+    balance: {{ valuation.balance }}
+  };
+  initTradePage();
+</script>
+{% endblock %}

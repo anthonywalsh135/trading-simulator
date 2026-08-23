@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Delete account{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="card">
+    <h1>Delete your account</h1>
+    <p class="sub">This cannot be undone.</p>
+
+    <div class="flash flash-error" style="position:static; box-shadow:none; margin-bottom:var(--space-4)">
+      <span>
+        Deleting removes your profile, balance, holdings, entire trade history and all
+        friend connections permanently.
+      </span>
+    </div>
+
+    {% if not otp_sent %}
+      {# a code is only sent when one is asked for. sending on every page
+         load fills the inbox and makes every refresh wait on the mail
+         server. #}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="send_otp" value="1">
+        <p class="small muted">
+          To confirm it is really you, we will email a verification code to
+          <strong>{{ current_user.email }}</strong>.
+        </p>
+        <button type="submit" class="btn btn-danger btn-block">Email me a confirmation code</button>
+      </form>
+    {% else %}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p class="small muted">Enter the code sent to <strong>{{ current_user.email }}</strong>.</p>
+        <div class="field">
+          <label for="otp_code">Confirmation code</label>
+          <input type="text" id="otp_code" name="otp_code" inputmode="numeric" maxlength="6"
+                 required autofocus autocomplete="one-time-code" placeholder="000000">
+        </div>
+        <button type="submit" class="btn btn-danger btn-block">Permanently delete my account</button>
+      </form>
+    {% endif %}
+
+    <p class="center small mt-4"><a href="{{ url_for('views.account') }}">Cancel and go back</a></p>
+  </div>
+</div>
+{% endblock %}

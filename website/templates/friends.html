@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Friends{% endblock %}
+
+{% block content %}
+<h1>Friends</h1>
+<p class="muted">Add friends to compare portfolios and see where you rank.</p>
+
+<div class="card mt-4">
+  <div class="card-head"><h3>Find people</h3></div>
+  <form method="POST" action="{{ url_for('views.search_users') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:flex; gap:var(--space-2)">
+      <input type="search" name="query" value="{{ query }}" placeholder="Search by first name" autofocus>
+      <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+  </form>
+
+  {% if query %}
+    {% if results %}
+      <div class="table-wrap mt-4">
+        <table class="data">
+          <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
+          <tbody>
+            {% for person in results %}
+            <tr>
+              <td><strong>{{ person.first_name }}</strong></td>
+              <td class="muted small">{{ person.email }}</td>
+              <td class="right">
+                {# a form rather than a link. as a GET this changes
+                   something, so any other page could fire it with an image
+                   tag. #}
+                <form method="POST" action="{{ url_for('views.send_friend_request', user_id=person.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Send request</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty"><p>Nobody found matching &ldquo;{{ query }}&rdquo;.</p></div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="grid grid-2 mt-4">
+  <div class="card">
+    <div class="card-head"><h3>Incoming requests</h3></div>
+    {% if incoming %}
+      {% for r in incoming %}
+        <div class="event">
+          <div style="flex:1">
+            <strong>{{ r.other_name }}</strong>
+            <div class="small muted">{{ r.other_email }}</div>
+          </div>
+          <div class="btn-row">
+            <form method="POST" action="{{ url_for('views.respond_friend_request', request_id=r.id, response='accept') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-primary btn-sm">Accept</button>
+            </form>
+            <form method="POST" action="{{ url_for('views.respond_friend_request', request_id=r.id, response='reject') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm">Decline</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">No pending requests.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Sent requests</h3></div>
+    {% if outgoing %}
+      {% for r in outgoing %}
+        <div class="event">
+          <div style="flex:1">
+            <strong>{{ r.other_name }}</strong>
+            <div class="small muted">Waiting for a response</div>
+          </div>
+          <form method="POST" action="{{ url_for('views.respond_friend_request', request_id=r.id, response='cancel') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost btn-sm">Cancel</button>
+          </form>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted small">You have not sent any requests.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

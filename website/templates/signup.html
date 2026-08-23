@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Sign up{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="card">
+    <h1>Create an account</h1>
+    <p class="sub">Start with $100,000 of simulated cash.</p>
+
+    {% if step == 'email' %}
+      {# step 1, check the email address before asking for anything else #}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="form_action" value="send_code">
+
+        <div class="field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" value="{{ email }}" required autofocus autocomplete="email">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Send verification code</button>
+      </form>
+    {% else %}
+      {# step 2, the code and the account details, sent together #}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="form_action" value="complete">
+        <input type="hidden" name="email" value="{{ email }}">
+
+        <p class="small muted">
+          We sent a 6-digit code to <strong>{{ email }}</strong>. It expires in 10 minutes.
+        </p>
+
+        <div class="field">
+          <label for="otp_code">Verification code</label>
+          <input type="text" id="otp_code" name="otp_code" inputmode="numeric" maxlength="6"
+                 required autofocus autocomplete="one-time-code" placeholder="000000">
+        </div>
+
+        <div class="field">
+          <label for="first_name">First name</label>
+          <input type="text" id="first_name" name="first_name" required autocomplete="given-name">
+        </div>
+
+        <div class="field">
+          <label for="password1">Password</label>
+          <input type="password" id="password1" name="password1" required minlength="8" autocomplete="new-password">
+          <span class="small muted">At least 8 characters.</span>
+        </div>
+
+        <div class="field">
+          <label for="password2">Confirm password</label>
+          <input type="password" id="password2" name="password2" required minlength="8" autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Create account</button>
+      </form>
+
+      <p class="center small mt-4">
+        <a href="{{ url_for('auth.signup') }}">Use a different email address</a>
+      </p>
+    {% endif %}
+
+    <p class="center small mt-4">
+      Already registered? <a href="{{ url_for('auth.login') }}">Log in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

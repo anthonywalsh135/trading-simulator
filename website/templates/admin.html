@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+<h1>Admin</h1>
+<p class="muted">
+  {{ users | length }} registered user{{ '' if users | length == 1 else 's' }}.
+  Access is granted by the <code>is_admin</code> column, not a hardcoded user id.
+</p>
+
+<div class="card mt-4">
+  <div class="card-head"><h3>Users</h3></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Email</th><th class="num">Balance</th>
+          <th>Sim date</th><th>Holdings</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="num">{{ u.id }}</td>
+          <td>
+            {# the name and the balance are edited together in one row,
+               rather than as two forms that each send a single field. #}
+            <form method="POST" style="display:flex; gap:6px; align-items:center">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="form_action" value="edit_user">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <input type="text" name="first_name" value="{{ u.first_name }}" required style="width:120px">
+              <input type="number" name="balance" value="{{ '%.2f' % u.balance }}" step="0.01" required style="width:120px">
+              <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+            </form>
+          </td>
+          <td class="small muted">
+            {{ u.email }}
+            {% if u.is_admin %}<span class="badge badge-sim">admin</span>{% endif %}
+          </td>
+          <td class="num">${{ '{:,.2f}'.format(u.balance) }}</td>
+          <td class="small muted">{{ u.sim_date }}</td>
+          <td>
+            {% set rows = holdings.get(u.id, []) %}
+            {% if rows %}
+              {% for h in rows %}
+                <div style="display:flex; gap:6px; align-items:center; margin-bottom:4px">
+                  <span class="num small"><strong>{{ h.symbol }}</strong> &times; {{ '{:g}'.format(h.shares) }}</span>
+                  <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="form_action" value="delete_holding">
+                    <input type="hidden" name="holding_id" value="{{ h.id }}">
+                    <button type="submit" class="btn btn-ghost btn-sm" title="Remove holding">&times;</button>
+                  </form>
+                </div>
+              {% endfor %}
+            {% else %}
+              <span class="small muted">None</span>
+            {% endif %}
+          </td>
+          <td class="right">
+            {% if u.id != current_user.id %}
+              <form method="POST" onsubmit="return confirm('Delete {{ u.first_name }} and all their data?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="form_action" value="delete_user">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+            {% else %}
+              <span class="small muted">You</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+
+{% block content %}
+<h1>Leaderboard</h1>
+<p class="muted">
+  Every trader's net worth, valued on the date they are each trading on, the
+  same figure they see on their own account.
+</p>
+
+<div class="card mt-4">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Rank</th><th>Trader</th><th>Valued on</th><th class="num">Net worth</th></tr></thead>
+      <tbody>
+        {% for row in leaderboard %}
+        <tr {% if row.is_me %}style="background: var(--accent-soft)"{% endif %}>
+          <td>
+            {% if row.rank == 1 %}🥇{% elif row.rank == 2 %}🥈{% elif row.rank == 3 %}🥉{% else %}{{ row.rank }}{% endif %}
+          </td>
+          <td><strong>{{ row.username }}</strong>{% if row.is_me %} <span class="badge badge-sim">you</span>{% endif %}</td>
+          <td class="small muted nowrap">{{ row.sim_date }}</td>
+          <td class="num">${{ '{:,.2f}'.format(row.net_worth) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">No traders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-3 mt-4">
+  <div class="stat-tile">
+    <div class="label">Most traded</div>
+    <div class="value">{{ insights.top_traded.symbol if insights.top_traded else '—' }}</div>
+    <div class="small muted">
+      {% if insights.top_traded %}{{ '{:,.0f}'.format(insights.top_traded.volume) }} units{% endif %}
+    </div>
+  </div>
+  <div class="stat-tile">
+    <div class="label">Average trade price</div>
+    <div class="value">${{ '{:,.2f}'.format(insights.avg_price) if insights.avg_price else '—' }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="label">Total trades</div>
+    <div class="value">{{ insights.total_trades or 0 }}</div>
+    <div class="small muted">
+      {% if insights.total_volume %}{{ '{:,.0f}'.format(insights.total_volume) }} units traded{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-head">
+    <h3>Recent trades across the site</h3>
+    <span class="small muted">See what everyone else is doing.</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Trader</th><th>Asset</th><th>Action</th><th class="num">Qty</th>
+                 <th class="num">Price</th><th>When</th></tr></thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td>{{ t.first_name }}</td>
+          <td><strong>{{ t.symbol }}</strong></td>
+          <td class="{{ 'up' if t.shares > 0 else 'down' }}">{{ 'Buy' if t.shares > 0 else 'Sell' }}</td>
+          <td class="num">{{ '{:g}'.format(t.shares | abs) }}</td>
+          <td class="num">${{ '{:,.2f}'.format(t.price) }}</td>
+          <td class="small muted nowrap">{{ t.executed_at[:16] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">No trades yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
