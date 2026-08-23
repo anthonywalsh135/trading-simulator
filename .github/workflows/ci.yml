@@ -12,7 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        # numpy 2.5 requires 3.12 or newer, which sets the floor for the project
+        python-version: ["3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4

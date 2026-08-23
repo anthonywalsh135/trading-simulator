@@ -8,7 +8,7 @@ and fast-forward through history to see how a strategy would have played out.
 Built with Flask, SQLite and vanilla JavaScript. No API key is needed to run it.
 
 [![tests](https://github.com/anthonywalsh135/trading-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/anthonywalsh135/trading-simulator/actions/workflows/ci.yml)
-![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
+![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![licence](https://img.shields.io/badge/licence-MIT-green)
 ![tests-count](https://img.shields.io/badge/tests-108%20passing-brightgreen)
 
@@ -99,6 +99,8 @@ triggered it:
 ---
 
 ## Running it
+
+Python 3.12 or newer is needed, since the pinned NumPy release requires it.
 
 ```bash
 pip install -r requirements.txt
@@ -274,8 +276,8 @@ python -m pytest tests/test_trading.py -v
 python -m pytest tests/test_simulation_date.py -v
 ```
 
-108 tests. They run against a temporary database and a fake market provider, so
-they never touch real data or the network. The fake provider carries a live price
+108 tests, run in CI on Python 3.12 and 3.13. They use a temporary database and
+a fake market provider, so they never touch real data or the network. The fake provider carries a live price
 *and* a price per past date, which is what lets a test tell the two apart.
 
 Tests are named for the behaviour they pin down, and the regression tests are
